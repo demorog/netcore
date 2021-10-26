@@ -1,0 +1,49 @@
+name: DOTNET Core
+
+on:
+  push:
+    branches: [ main1 ]
+  pull_request:
+    branches: [ main1 ]
+
+jobs:
+  build-and-deploy:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 5.0.100-rc.1.20452.10
+    - name: where are we
+      run: pwd
+    - name: Install dependencies
+      run: dotnet restore ./SampleCoreApp/
+    - name: Build
+      run: dotnet build --configuration Release --no-restore ./SampleCoreApp
+    - name: Test
+      run: dotnet test --no-restore --verbosity normal --collect:"XPlat Code Coverage" ./SampleCoreApp
+        
+    - name: dotnet publish
+      run: dotnet publish -c Release -o dotnetcorewebapp ./SampleCoreApp
+      
+    - name: Upload artifact for deployment job
+      uses: actions/upload-artifact@v2
+      with:
+        name: dotnet-app
+        path: dotnetcorewebapp
+        
+    - name: Download artifact from build job
+      uses: actions/download-artifact@v2
+      with:
+        name: dotnet-app
+
+
+    - name: 'Deploy to Azure WebApp'
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: 'sampledotnetcoredemo'
+        publish-profile: ${{ secrets.DOTNET_WEB_APP }}
+        package: .
